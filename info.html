@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Космическая Академия Битов</title>
+    <style>
+        :root {
+            --space-bg: #0b0e1a;
+            --neon-blue: #00f2ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #39ff14;
+            --neon-red: #ff3131;
+            --text-color: #e0e0e0;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--space-bg);
+            color: var(--text-color);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Звездный фон */
+        #stars-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: twinkle var(--duration) infinite;
+        }
+
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        /* Контейнер игры */
+        #game-container {
+            width: 900px;
+            height: 600px;
+            background: rgba(20, 25, 45, 0.9);
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue);
+            border-radius: 15px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        /* Интерфейс */
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 242, 255, 0.3);
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--neon-purple);
+        }
+
+        /* Экраны */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+
+        .active { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Робот Байтик */
+        #baitik-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .baitik {
+            font-size: 50px;
+            filter: drop-shadow(0 0 5px var(--neon-blue));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .bubble {
+            background: white;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-left: 15px;
+            max-width: 250px;
+            position: relative;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Кнопки */
+        .btn {
+            background: transparent;
+            color: var(--neon-blue);
+            border: 2px solid var(--neon-blue);
+            padding: 12px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        /* Игровые карточки */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .option-card:hover { background: rgba(0, 242, 255, 0.2); }
+
+        .correct { border-color: var(--neon-green) !important; color: var(--neon-green); }
+        .wrong { border-color: var(--neon-red) !important; color: var(--neon-red); }
+
+        /* Справочник */
+        #handbook {
+            position: absolute;
+            top: 60px; right: 20px;
+            background: #111;
+            border: 1px solid gold;
+            padding: 15px;
+            display: none;
+            z-index: 100;
+            font-size: 12px;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        td, th { border: 1px solid #444; padding: 5px; }
+
+        input[type="number"] {
+            background: #222;
+            color: white;
+            border: 1px solid var(--neon-blue);
+            padding: 10px;
+            font-size: 18px;
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="stars-container"></div>
+
+<div id="game-container">
+    <div id="hud">
+        <div class="stat-box">Уровень: <span id="level-num">1</span></div>
+        <div class="stat-box">Кристаллы: <span id="score-num">0</span> 💎</div>
+        <div class="stat-box">Сложность: <span id="difficulty-text">-</span></div>
+        <button onclick="toggleHandbook()" style="cursor:pointer; background:none; border:none; color:gold;">📔 Справочник</button>
+    </div>
+
+    <div id="handbook">
+        <strong>Память Академии:</strong>
+        <table>
+            <tr><th>Единица</th><th>Равно</th></tr>
+            <tr><td>1 Байт</td><td>8 бит</td></tr>
+            <tr><td>1 КБ</td><td>1024 байта</td></tr>
+            <tr><td>1 МБ</td><td>1024 КБ</td></tr>
+            <tr><td>1 ГБ</td><td>1024 МБ</td></tr>
+        </table>
+        <p>Лестница: бит → байт → КБ → МБ → ГБ</p>
+    </div>
+
+    <div id="start-screen" class="screen active">
+        <h1 style="color: var(--neon-blue); font-size: 3em;">КОСМИЧЕСКАЯ АКАДЕМИЯ БИТОВ</h1>
+        <p>Информационное ядро станции повреждено! Помоги Байтику восстановить данные.</p>
+        <div>
+            <button class="btn" onclick="startGame('easy')">Новичок (5 кл)</button>
+            <button class="btn" onclick="startGame('medium')">Исследователь (6 кл)</button>
+            <button class="btn" onclick="startGame('hard')">Эксперт (7 кл)</button>
+        </div>
+    </div>
+
+    <div id="level-screen" class="screen">
+        <h2 id="level-title">Уровень 1: Склад Единиц</h2>
+        <p id="task-text">Загрузка задания...</p>
+        <div id="game-content" style="width: 100%;">
+            </div>
+        <div id="feedback" style="margin-top: 20px; font-weight: bold; min-height: 24px;"></div>
+    </div>
+
+    <div id="win-screen" class="screen">
+        <h1 style="color: var(--neon-green);">МИССИЯ ВЫПОЛНЕНА!</h1>
+        <div class="baitik">🤖</div>
+        <p id="final-stats"></p>
+        <button class="btn" onclick="location.reload()">Начать заново</button>
+    </div>
+
+    <div id="baitik-container">
+        <div class="baitik">🤖</div>
+        <div class="bubble" id="baitik-bubble">Привет, курсант! Готов к запуску?</div>
+    </div>
+</div>
+
+<script>
+    // Инициализация звезд
+    const starsContainer = document.getElementById('stars-container');
+    for (let i = 0; i < 100; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.width = star.style.height = Math.random() * 3 + 'px';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.setProperty('--duration', Math.random() * 3 + 2 + 's');
+        starsContainer.appendChild(star);
+    }
+
+    // Состояние игры
+    let gameState = {
+        score: 0,
+        currentLevel: 1,
+        difficulty: 'easy',
+        playerName: 'Курсант'
+    };
+
+    const levels = [
+        {
+            title: "Запоминание: Склад Единиц",
+            tasks: [
+                { q: "Самая маленькая единица информации?", a: ["Бит", "Байт", "Килограмм", "Файл"], correct: 0, help: "Это как атом в мире данных!" },
+                { q: "8 бит это — ...", a: ["1 Мегабайт", "1 Грамм", "1 Байт", "1 Килобайт"], correct: 2, help: "Вспомни: байт состоит из восьми кусочков." }
+            ]
+        },
+        {
+            title: "Понимание: Лаборатория смыслов",
+            tasks: [
+                { q: "В чём лучше измерять полнометражный фильм?", a: ["В битах", "В байтах", "В гигабайтах", "В километрах"], correct: 2, help: "Фильмы очень тяжелые!" },
+                { q: "Размер текстового SMS сообщения обычно равен...", a: ["5 Терабайт", "200 Байт", "10 ГБ", "100 МБ"], correct: 1, help: "Текст весит совсем немного." }
+            ]
+        },
+        {
+            title: "Применение: Переводчик",
+            type: "input",
+            tasks: [
+                { q: "Сколько бит в 2 байтах?", a: 16, help: "Умножь количество байт на 8." },
+                { q: "Сколько КБ в 2 МБ?", a: 2048, help: "В 1 мегабайте ровно 1024 килобайта." }
+            ]
+        },
+        {
+            title: "Анализ: Сортировка",
+            type: "sort",
+            tasks: [
+                { q: "Выбери САМЫЙ БОЛЬШОЙ объем данных:", a: ["500 КБ", "1 ГБ", "900 МБ", "2000 Байт"], correct: 1, help: "Гигабайт — это тысячи мегабайт!" }
+            ]
+        },
+        {
+            title: "Оценка: Выбор системы",
+            tasks: [
+                { q: "У тебя флешка на 100 МБ. Что на неё НЕ поместится?", a: ["Фото (3 МБ)", "Песня (5 МБ)", "Видеоархив (1 ГБ)", "Текст (10 КБ)"], correct: 2, help: "Сравни 100 МБ и 1 ГБ (1024 МБ)." }
+            ]
+        }
+    ];
+
+    let currentTaskIdx = 0;
+
+    function startGame(diff) {
+        gameState.difficulty = diff;
+        document.getElementById('difficulty-text').innerText = diff === 'easy' ? 'Новичок' : diff === 'medium' ? 'Исследователь' : 'Эксперт';
+        document.getElementById('start-screen').classList.remove('active');
+        document.getElementById('level-screen').classList.add('active');
+        loadLevel();
+    }
+
+    function loadLevel() {
+        const levelData = levels[gameState.currentLevel - 1];
+        const task = levelData.tasks[currentTaskIdx];
+        
+        document.getElementById('level-title').innerText = `Миссия ${gameState.currentLevel}: ${levelData.title}`;
+        document.getElementById('level-num').innerText = gameState.currentLevel;
+        document.getElementById('task-text').innerText = task.q;
+        document.getElementById('feedback').innerText = "";
+        
+        const content = document.getElementById('game-content');
+        content.innerHTML = "";
+
+        if (levelData.type === "input") {
+            const input = document.createElement('input');
+            input.type = "number";
+            input.id = "user-input";
+            const btn = document.createElement('button');
+            btn.className = "btn";
+            btn.innerText = "Проверить";
+            btn.onclick = () => checkAnswer(parseInt(input.value));
+            content.appendChild(input);
+            content.appendChild(btn);
+        } else {
+            const grid = document.createElement('div');
+            grid.className = "options-grid";
+            task.a.forEach((opt, idx) => {
+                const card = document.createElement('div');
+                card.className = "option-card";
+                card.innerText = opt;
+                card.onclick = () => checkAnswer(idx);
+                grid.appendChild(card);
+            });
+            content.appendChild(grid);
+        }
+        
+        sayBaitik("Внимательно изучи данные, курсант!");
+    }
+
+    function checkAnswer(val) {
+        const levelData = levels[gameState.currentLevel - 1];
+        const task = levelData.tasks[currentTaskIdx];
+        const isCorrect = val === task.a || val === task.correct;
+
+        if (isCorrect) {
+            gameState.score += 15;
+            document.getElementById('score-num').innerText = gameState.score;
+            sayBaitik("Отлично! Система восстанавливается!");
+            document.getElementById('feedback').innerHTML = "<span style='color:var(--neon-green)'>ПРАВИЛЬНО!</span>";
+            
+            setTimeout(() => {
+                currentTaskIdx++;
+                if (currentTaskIdx >= levelData.tasks.length) {
+                    currentTaskIdx = 0;
+                    gameState.currentLevel++;
+                    if (gameState.currentLevel > levels.length) {
+                        finishGame();
+                    } else {
+                        loadLevel();
+                    }
+                } else {
+                    loadLevel();
+                }
+            }, 1500);
+        } else {
+            gameState.score -= 5;
+            document.getElementById('score-num').innerText = gameState.score;
+            sayBaitik(task.help);
+            document.getElementById('feedback').innerHTML = "<span style='color:var(--neon-red)'>ОШИБКА В КОДЕ! Попробуй еще раз.</span>";
+        }
+    }
+
+    function sayBaitik(text) {
+        document.getElementById('baitik-bubble').innerText = text;
+    }
+
+    function toggleHandbook() {
+        const hb = document.getElementById('handbook');
+        hb.style.display = hb.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function finishGame() {
+        document.getElementById('level-screen').classList.remove('active');
+        document.getElementById('win-screen').classList.add('active');
+        document.getElementById('final-stats').innerText = `Ты собрал ${gameState.score} кристаллов данных и стал настоящим Экспертом Информации!`;
+        sayBaitik("Ура! Мы спасли Академию!");
+    }
+</script>
+
+</body>
+</html>
